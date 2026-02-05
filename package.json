@@ -10,9 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "axios": "^1.13.4",
+    "openscad-playground": "^2.4.0",
     "prismjs": "^1.30.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

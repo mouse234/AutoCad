@@ -1,164 +1,271 @@
 # 🤖 AI CAD Chatbot
 
-A beautiful React-based AI chatbot that generates OpenSCAD CAD files using Google's Gemini API. Features a split-view interface similar to Claude's artifact view.
+A powerful React-based AI chatbot that generates OpenSCAD CAD files using Google's Gemini 3 Pro Preview API. Features a beautiful split-view interface with real-time 3D visualization.
 
-![CAD Chatbot](https://img.shields.io/badge/React-18.3-blue) ![Gemini-API](https://img.shields.io/badge/Gemini-AI-orange) ![OpenSCAD](https://img.shields.io/badge/OpenSCAD-Ready-green)
+![CAD Chatbot](https://img.shields.io/badge/React-19.2-blue) ![Gemini-3](https://img.shields.io/badge/Gemini-3_Pro-orange) ![OpenSCAD](https://img.shields.io/badge/OpenSCAD-Ready-green)
 
 ## ✨ Features
 
 - 💬 **Natural Language CAD Design** - Describe parts in plain English
-- 📐 **Live Code Preview** - See generated OpenSCAD code instantly
-- ⬇️ **One-Click Download** - Download `.scad` files directly
-- 🎨 **Beautiful UI** - Modern dark theme with glassmorphism effects
-- 🚀 **Powered by Gemini** - Advanced AI understanding of CAD requirements
-
-## 🖼️ Interface
-
-Split-view design:
-- **Left Panel**: Chat interface with AI assistant
-- **Right Panel**: Live CAD code preview with syntax highlighting
+- 🤖 **Gemini 3 Pro Preview** - Latest AI model with advanced reasoning
+- 📐 **Live 3D Visualization** - Interactive Three.js renderer
+- 💾 **STL Export** - Ready for 3D printing
+- 🎨 **Beautiful UI** - Modern split-view interface
+- ⚡ **Real-time Preview** - Instant code generation and rendering
 
 ## 🚀 Quick Start
 
-### 1️⃣ Get Gemini API Key
+### Prerequisites
 
-1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Create a new API key
-3. Copy the key
+1. **Node.js** (v16 or higher)
+   - Download from [nodejs.org](https://nodejs.org/)
 
-### 2️⃣ Configure Environment
+2. **OpenSCAD** (for 3D rendering)
+   - **Windows**: Download from [openscad.org/downloads](https://openscad.org/downloads.html)
+   - Install to default location: `C:\Program Files\OpenSCAD\` or `C:\Program Files (x86)\OpenSCAD\`
 
-Edit `.env` file in the root directory:
+3. **Google Gemini API Key**
+   - Get your free API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
 
-```bash
-GEMINI_API_KEY=your_actual_api_key_here
-```
+### Installation
 
-### 3️⃣ Install Dependencies
+1. **Clone or download this repository**
 
-```bash
-# Install frontend dependencies (already done)
-npm install
+2. **Install frontend dependencies:**
+   ```powershell
+   npm install
+   ```
 
-# Install backend dependencies
-cd server
-npm install
-cd ..
-```
+3. **Install backend dependencies:**
+   ```powershell
+   cd server
+   npm install
+   cd ..
+   ```
 
-### 4️⃣ Run the Application
+4. **Configure API Key:**
+   
+   Create a `.env` file in the root directory:
+   ```env
+   GEMINI_API_KEY=your_api_key_here
+   ```
+
+   Also create `server/.env`:
+   ```env
+   GEMINI_API_KEY=your_api_key_here
+   ```
+
+### Running the Application
+
+You need to run **two servers** (backend and frontend):
+
+#### Option 1: Using Two Terminals (Recommended)
 
 **Terminal 1 - Backend Server:**
-```bash
+```powershell
 cd server
 npm start
 ```
+Should show: `🚀 CAD Chatbot Server running on http://localhost:3001`
 
-**Terminal 2 - Frontend (Vite Dev Server):**
-```bash
+**Terminal 2 - Frontend Server:**
+```powershell
+npm run dev
+```
+Should show: `➜ Local: http://localhost:5173/`
+
+#### Option 2: Using PowerShell Background Jobs
+
+```powershell
+# Start backend
+Start-Job -ScriptBlock { cd server; npm start }
+
+# Start frontend
 npm run dev
 ```
 
-### 5️⃣ Open Browser
+### Access the Application
 
-Navigate to: **http://localhost:5173**
+Open your browser and navigate to:
+```
+http://localhost:5173
+```
 
-## 📝 Usage Examples
+## � Usage Guide
 
-Try these prompts:
+### Generating CAD Models
 
-- *"Create a box 100x60x30mm with 4 M4 screw holes in the corners"*
-- *"Design a gear with 20 teeth and 5mm bore"*
-- *"Make a mounting bracket 50x40mm with 4 holes"*
-- *"Create a cylindrical shaft 20mm diameter, 100mm long"*
+1. **Type your request** in the chat interface, for example:
+   - "Create a mounting bracket 50mm x 40mm with M4 holes"
+   - "Design a cylindrical enclosure 80mm diameter, 50mm height"
+   - "Make a gear with 20 teeth, 5mm bore"
 
-## 🛠️ Technology Stack
+2. **View the 3D model** in the preview panel (right side)
+   - Rotate: Left-click and drag
+   - Zoom: Scroll wheel
+   - Pan: Right-click and drag
 
-### Frontend
-- **React 18** - UI framework
-- **Vite** - Build tool & dev server
-- **Axios** - HTTP client
-- **Prism.js** - Syntax highlighting
-- **CSS3** - Modern styling with gradients & animations
+3. **Download files:**
+   - Click **⬇️ STL** to download for 3D printing
+   - Click **⬇️ SCAD** to download the OpenSCAD source code
 
-### Backend
-- **Express.js** - Web server
-- **Google Gemini AI** - Natural language processing
-- **CORS** - Cross-origin support
-- **dotenv** - Environment variables
+### Tips for Best Results
+
+- **Be specific** about dimensions (use millimeters)
+- **Mention materials** or manufacturing constraints
+- **Specify hole sizes** (e.g., "M4 clearance holes")
+- **Ask for modifications** - the AI remembers context
+
+## 🛠️ Troubleshooting
+
+### Backend Won't Start
+
+**Problem**: `GEMINI_API_KEY not configured`
+- **Solution**: Ensure `.env` files exist with valid API key
+
+**Problem**: `OpenSCAD not found`
+- **Solution**: Install OpenSCAD to default location or add to PATH
+
+### Frontend Shows Blank Page
+
+**Problem**: Frontend not loading
+- **Solution**: 
+  1. Stop the frontend server (Ctrl+C)
+  2. Run `npm run dev` again
+  3. Clear browser cache and reload
+
+### OpenSCAD Rendering Errors
+
+**Problem**: `all points for rotate_extrude() must have the same X coordinate sign`
+- **Solution**: This is an AI generation error. Try:
+  1. Restart the backend server to reload improved prompts
+  2. Ask the AI to regenerate the model
+  3. The latest version includes fixes for this issue
+
+**Problem**: `Command failed` or `Error: OpenSCAD not installed`
+- **Solution**: Verify OpenSCAD installation path:
+  ```powershell
+  Test-Path "C:\Program Files\OpenSCAD\openscad.exe"
+  ```
 
 ## 📁 Project Structure
 
 ```
 cad-chatbot/
-├── src/
-│   ├── components/
-│   │   ├── ChatInterface.jsx       # Chat UI component
-│   │   ├── ChatInterface.css
-│   │   ├── CADPreview.jsx          # Code preview panel
-│   │   └── CADPreview.css
-│   ├── App.jsx                     # Main app component
-│   ├── App.css
+├── src/                    # Frontend React application
+│   ├── components/         # React components
+│   │   ├── ChatInterface.jsx
+│   │   └── CADPreview.jsx
+│   ├── App.jsx
 │   └── main.jsx
-├── server/
-│   ├── index.js                    # Express + Gemini API
-│   └── package.json
-├── .env                            # API keys (DO NOT COMMIT)
-├── package.json
-└── README.md
+├── server/                 # Backend Node.js server
+│   ├── index.js           # Express server + Gemini AI
+│   ├── temp/              # Temporary SCAD/STL files
+│   └── .env               # API key configuration
+├── public/                 # Static assets
+└── package.json           # Frontend dependencies
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `GEMINI_API_KEY` | Your Google Gemini API key | Yes |
+**`.env` (root):**
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+```
 
-### Port Configuration
+**`server/.env`:**
+```env
+GEMINI_API_KEY=your_gemini_api_key_here
+```
 
-- **Frontend**: `http://localhost:5173` (Vite default)
-- **Backend**: `http://localhost:3001` (Express server)
+### AI Model Configuration
 
-## 🎨 Design Features
+The application uses **Gemini 3 Pro Preview** by default. To change the model, edit `server/index.js`:
 
-- **Dark Theme** - Easy on the eyes
-- **Glassmorphism** - Modern frosted glass effects
-- **Gradient Accents** - Blue & orange color scheme
-- **Smooth Animations** - Micro-interactions for better UX
-- **Responsive Layout** - Mobile-friendly design
+```javascript
+const model = genAI.getGenerativeModel({ 
+    model: 'gemini-3-pro-preview' // Change this
+});
+```
 
-## 🐛 Troubleshooting
+Available models:
+- `gemini-3-pro-preview` - Latest, most capable (current)
+- `gemini-3-flash-preview` - Faster, still very capable
+- `gemini-1.5-pro` - Stable production model
+- `gemini-1.5-flash` - Fast and efficient
 
-### Backend won't start
-- Check if `GEMINI_API_KEY` is set in `.env`
-- Ensure port 3001 is available
+## 🎨 Features in Detail
 
-### Frontend can't connect to backend
-- Verify backend is running on port 3001
-- Check CORS is enabled (already configured)
+### AI-Powered Design
+- Natural language understanding
+- Context-aware conversations
+- Parametric design generation
+- Manufacturing-ready code
 
-### No SCAD code generated
-- Ensure you're asking for CAD designs
-- Check backend logs for Gemini API errors
+### 3D Visualization
+- Real-time STL rendering
+- Interactive camera controls
+- Professional lighting and shadows
+- Auto-rotating preview
 
-## 📦 Building for Production
+### Code Quality
+- Clean, commented OpenSCAD code
+- Parametric variables for easy editing
+- Best practices for 3D printing
+- Manifold geometry validation
 
-```bash
+## 🐛 Known Issues
+
+1. **First render is slow** - OpenSCAD compilation can take 30-60 seconds for complex models
+2. **Large models** - Very complex geometries may timeout or run out of memory
+3. **Preview models** - Gemini 3 Pro Preview requires API access (may have usage limits)
+
+## 📝 Development
+
+### Running in Development Mode
+
+```powershell
+# Frontend with hot reload
+npm run dev
+
+# Backend with auto-restart (optional)
+cd server
+npm install -g nodemon
+nodemon index.js
+```
+
+### Building for Production
+
+```powershell
 npm run build
 ```
 
-Output will be in `dist/` directory.
-
 ## 🤝 Contributing
 
-Feel free to open issues or submit PRs!
+Contributions are welcome! Please feel free to submit issues or pull requests.
 
 ## 📄 License
 
-MIT License - feel free to use for your own projects!
+This project is open source and available under the MIT License.
+
+## 🙏 Acknowledgments
+
+- **Google Gemini AI** - For the powerful language model
+- **OpenSCAD** - For the amazing CAD kernel
+- **Three.js** - For 3D rendering capabilities
+- **React** - For the UI framework
+
+## 📞 Support
+
+If you encounter any issues:
+
+1. Check the troubleshooting section above
+2. Ensure all prerequisites are installed
+3. Verify your API key is valid
+4. Restart both servers
 
 ---
 
-**Made with ❤️ using React + Gemini AI**
+**Built with ❤️ using React, Node.js, and Gemini AI**

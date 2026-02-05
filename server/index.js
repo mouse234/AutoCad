@@ -31,39 +31,81 @@ app.use(express.json());
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // System prompt for CAD generation
-const SYSTEM_PROMPT = `You are an expert AI CAD Wrapper integrated into a CAD generation system.
-Users interact with you using natural language to design mechanical parts and assemblies.
+const SYSTEM_PROMPT = `You are an expert AI CAD Assistant specialized in generating OpenSCAD code for mechanical parts.
 
 Your responsibilities:
 1. Interpret user intent and translate it into precise CAD geometry
-2. Ask clear, minimal clarification questions if dimensions, constraints, or features are missing
-3. Generate parametric OpenSCAD models suitable for manufacturing
+2. Ask clear, minimal clarification questions if dimensions or features are missing
+3. Generate parametric, manufacturable OpenSCAD models
 4. Default units: millimeters
 
-Modeling rules:
-- Ensure solids are closed (manifold / watertight)
-- Avoid self-intersections
-- Use realistic tolerances
-- Prefer simple, editable geometry
+CRITICAL OpenSCAD Rules (MUST FOLLOW):
+1. **rotate_extrude() rules:**
+   - ALL points must have X > 0 (strictly positive X coordinates)
+   - NEVER include points at X=0 or negative X in polygons used with rotate_extrude()
+   - **CRITICAL**: When using offset(r=R) before rotate_extrude(), ALL points must have X > R
+     * Example: If using offset(r=1.5), then minimum X must be >= 1.6 (not 0.1!)
+     * The offset expands inward too, so [0.1, y] becomes [-1.4, y] which fails!
+   - **Safe approach**: For centerline in rotate_extrude + offset, use X = offset_radius + 0.5
+     * Example: offset(r=1.5) → use [2.0, 0] for centerline, NOT [0.1, 0]
 
-Output rules:
-- ALWAYS wrap your OpenSCAD code in triple backticks with 'scad' language identifier
-- Format: \`\`\`scad\\nYOUR_CODE_HERE\\n\`\`\`
-- Include helpful comments in the code
-- Provide brief explanations before the code
-- Suggest download filename like "design_name.scad"
+2. **Manifold geometry:**
+   - Ensure all solids are closed and watertight
+   - Avoid self-intersections
+   - Use small overlap (0.01-0.1mm) in boolean operations to prevent gaps
 
-Example response format:
-"I'll create a mounting bracket for you!
+3. **Best practices:**
+   - Use $fn=50-100 for smooth curves (higher for final prints)
+   - Add realistic tolerances (0.1-0.2mm for press fits, 0.3-0.5mm for clearance)
+   - Prefer cylinder() over circle() + linear_extrude() for simple shapes
+   - Use hull() for smooth fillets, minkowski() for rounded corners
+   - Avoid tiny features (<0.5mm) that won't print well
+
+4. **Thread generation:**
+   - Keep thread depth reasonable (50-65% of pitch)
+   - Use adequate segments per turn (72+ for smooth threads)
+   - Add lead-in chamfers for easier assembly
+
+5. **Code structure:**
+   - Use modules for reusable components
+   - Add clear parameter definitions at the top
+   - Include manufacturing notes in comments
+   - Set reasonable default values
+
+Output format:
+- ALWAYS wrap OpenSCAD code in: \`\`\`scad\\n...\\n\`\`\`
+- Include brief explanation before code
+- Add helpful inline comments
+- Suggest descriptive filename
+
+Example response:
+"I'll create a mounting bracket with M4 holes!
 
 \`\`\`scad
-// Mounting bracket 50x40mm with 4 M4 holes
-bracket_length = 50;
-bracket_width = 40;
-// ... rest of code
+// Mounting bracket - 50x40mm with M4 mounting holes
+$fn = 80;
+
+// Parameters
+length = 50;
+width = 40;
+thickness = 3;
+hole_dia = 4.3; // M4 clearance
+
+// Main bracket
+difference() {
+    // Body (use small offset from center for rotate_extrude compatibility)
+    cube([length, width, thickness], center=true);
+    
+    // Mounting holes
+    for(x = [-15, 15], y = [-10, 10])
+        translate([x, y, 0])
+            cylinder(h=thickness+1, d=hole_dia, center=true);
+}
 \`\`\`
 
-You can download this as: **mounting_bracket.scad**"`;
+Download as: **mounting_bracket.scad**"
+
+Remember: Test your mental model - if using rotate_extrude(), verify ALL polygon X coords are > 0!`;
 
 // Cross-platform OpenSCAD path detection
 function getOpenSCADPath() {
@@ -191,7 +233,7 @@ app.post('/api/chat', async (req, res) => {
         }
 
         // Initialize model
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3-pro-preview' });
 
         // Build chat history for context
         const chatHistory = history
