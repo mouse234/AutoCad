@@ -215,7 +215,7 @@ const CADPreview = ({ scadCode, fileName }) => {
 
             try {
                 console.log("Requesting render...");
-                const response = await axios.post('http://localhost:3001/api/render', { scadCode });
+                const response = await axios.post('/api/render', { scadCode });
 
                 // Convert base64 to blob URL
                 const byteCharacters = atob(response.data.stlData);

@@ -5,7 +5,7 @@ import './ChatInterface.css';
 // Debug: Test backend connection
 const testBackendConnection = async () => {
     try {
-        const res = await fetch('http://localhost:3001/api/health');
+      const response = await fetch('/api/health');
         const data = await res.json();
         console.log('✅ Backend healthy:', data);
         return data;
@@ -62,7 +62,7 @@ const ChatInterface = ({ onScadGenerated, sessionId, onSessionChange, initialMes
         setIsLoading(true);
 
         try {
-            const response = await axios.post('http://localhost:3001/api/chat', {
+            const response = await axios.post('/api/chat', {
                 message: input,
                 sessionId: sessionId
             });
@@ -89,7 +89,7 @@ const ChatInterface = ({ onScadGenerated, sessionId, onSessionChange, initialMes
             const errorMsg = error.response?.data?.error || error.response?.data?.details || error.message || 'Unknown error';
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: `❌ Error: ${errorMsg}\n\nPlease check:\n- Backend server is running on http://localhost:3001\n- API_KEY is properly configured in server/.env`
+                content: `❌ Error: ${errorMsg}\n\nPlease check:\n- Backend server is running\n- API_KEY is properly configured in server/.env`
             }]);
         } finally {
             setIsLoading(false);

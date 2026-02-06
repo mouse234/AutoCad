@@ -12,7 +12,7 @@ const SessionsList = ({ currentSessionId, onResumeSession, onClose }) => {
             setIsLoading(true);
             setError(null);
             try {
-                const res = await fetch('http://localhost:3001/api/sessions');
+                const res = await fetch('/api/sessions');
                 const data = await res.json();
                 if (data.sessions) {
                     setSessions(data.sessions);
@@ -38,7 +38,7 @@ const SessionsList = ({ currentSessionId, onResumeSession, onClose }) => {
         if (!window.confirm('Delete this session? This cannot be undone.')) return;
 
         try {
-            const res = await fetch(`http://localhost:3001/api/session/${sessionId}`, {
+            const res = await fetch(`/api/session/${sessionId}`, {
                 method: 'DELETE'
             });
             if (res.ok) {

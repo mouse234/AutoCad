@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "start": "node start.js",
+    "server": "cd server && npm start",
     "build": "vite build",
+    "start": "npm run build && cd server && npm start",
+    "dev:both": "node start.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },

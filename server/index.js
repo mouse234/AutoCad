@@ -7,7 +7,7 @@ import path from 'path';
 import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'url';
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Setup paths
 const __filename = fileURLToPath(import.meta.url);
@@ -24,14 +24,23 @@ if (!fs.existsSync(SESSIONS_DIR)) {
 }
 
 // Middleware
-app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
-    credentials: true,
-    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+const isDev = process.env.NODE_ENV === 'development';
+if (isDev) {
+    app.use(cors({
+        origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+        credentials: true,
+        methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization']
+    }));
+}
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Serve static frontend files (production build)
+const distPath = path.join(__dirname, '..', 'dist');
+if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+}
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -316,9 +325,14 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', geminiConfigured: !!process.env.GEMINI_API_KEY });
 });
 
-// 404 handler
-app.use((req, res) => {
-    res.status(404).json({ error: 'Endpoint not found', path: req.path });
+// Serve index.html for SPA routes (catch-all must come after API routes)
+app.get('*', (req, res) => {
+    const indexPath = path.join(distPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).json({ error: 'Frontend not built. Run: npm run build' });
+    }
 });
 
 // Error handler

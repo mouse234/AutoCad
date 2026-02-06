@@ -31,7 +31,7 @@ function App() {
 
   const handleNewSession = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/session/create', { method: 'POST' });
+      const res = await fetch('/api/session/create', { method: 'POST' });
       const data = await res.json();
       if (data.sessionId) {
         setSessionId(data.sessionId);
@@ -53,7 +53,7 @@ function App() {
 
   const handleResumeSession = async (sessionIdToResume) => {
     try {
-      const res = await fetch(`http://localhost:3001/api/session/${sessionIdToResume}`);
+      const res = await fetch(`/api/session/${sessionIdToResume}`);
       const session = await res.json();
 
       if (session.id) {
@@ -207,7 +207,7 @@ function App() {
               </div>
               <div className="settings-group">
                 <label>Backend Server</label>
-                <p>http://localhost:3001</p>
+                <p>Backend running (same port)</p>
               </div>
               <div className="settings-group">
                 <label>Frontend Server</label>
