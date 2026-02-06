@@ -6,6 +6,12 @@ import fs from 'fs';
 import path from 'path';
 import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'url';
+
+// Polyfill for openscad-playground worker which expects 'self' in browser context
+if (typeof global.self === 'undefined') {
+    global.self = global;
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -144,8 +150,9 @@ function renderLocally(scadCode) {
     return new Promise((resolve, reject) => {
         try {
             // Use the openscad-playground worker (WASM) bundled in node_modules
-            const workerPath = path.join(__dirname, '..', 'node_modules', 'openscad-playground', 'dist', 'openscad-worker.cjs');
-            if (!fs.existsSync(workerPath)) return reject(new Error(`openscad-playground worker not found at ${workerPath}`));
+            // Use the wrapper that sets up the 'self' polyfill
+            const workerPath = path.join(__dirname, 'openscad-worker-wrapper.cjs');
+            if (!fs.existsSync(workerPath)) return reject(new Error(`openscad-worker-wrapper not found at ${workerPath}`));
 
             const w = new Worker(workerPath, { argv: [], execArgv: [] });
 
