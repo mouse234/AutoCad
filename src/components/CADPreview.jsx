@@ -28,16 +28,16 @@ const ModelViewer = ({ stlUrl }) => {
 };
 
 const CADPreview = ({ scadCode, fileName }) => {
-    const [activeTab, setActiveTab] = useState('3d'); // Default to 3D view
+    const [showCode, setShowCode] = useState(false); // Code hidden by default
     const [stlUrl, setStlUrl] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (activeTab === 'code') {
+        if (showCode) {
             Prism.highlightAll();
         }
-    }, [scadCode, activeTab]);
+    }, [scadCode, showCode]);
 
     // Generate 3D model when code changes
     useEffect(() => {
@@ -49,8 +49,6 @@ const CADPreview = ({ scadCode, fileName }) => {
         const generateModel = async () => {
             setIsLoading(true);
             setError(null);
-            // Switch to 3D view automatically on new generation if user hasn't explicitly set code
-            // or just keep current. Let's keep current tab but force update.
 
             try {
                 console.log("Requesting render...");
@@ -67,11 +65,9 @@ const CADPreview = ({ scadCode, fileName }) => {
                 const url = URL.createObjectURL(blob);
 
                 setStlUrl(url);
-                setActiveTab('3d'); // Switch to 3D view on success
             } catch (err) {
                 console.error('Render error:', err);
-                setError('Failed to render 3D model. OpenSCAD may not be installed on the server.');
-                // Don't switch tab on error, let them see error in 3D view or switch themselves
+                setError('Failed to render 3D model. Check the server logs.');
             } finally {
                 setIsLoading(false);
             }
@@ -111,25 +107,9 @@ const CADPreview = ({ scadCode, fileName }) => {
     return (
         <div className="cad-preview">
             <div className="preview-header">
-                <div className="header-left">
-                    <h2>📐 CAD Preview</h2>
-                    <div className="tabs">
-                        <button
-                            className={`tab ${activeTab === '3d' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('3d')}
-                        >
-                            3D View
-                        </button>
-                        <button
-                            className={`tab ${activeTab === 'code' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('code')}
-                        >
-                            Code
-                        </button>
-                    </div>
-                </div>
-                <div className="header-right">
-                    {stlUrl && activeTab === '3d' && (
+                <h2>📐 3D Model</h2>
+                <div className="header-buttons">
+                    {stlUrl && (
                         <button className="download-btn secondary" onClick={handleDownloadStl}>
                             ⬇️ STL
                         </button>
@@ -137,6 +117,11 @@ const CADPreview = ({ scadCode, fileName }) => {
                     {scadCode && (
                         <button className="download-btn" onClick={handleDownload}>
                             ⬇️ SCAD
+                        </button>
+                    )}
+                    {scadCode && (
+                        <button className={`toggle-code-btn ${showCode ? 'active' : ''}`} onClick={() => setShowCode(!showCode)}>
+                            {showCode ? '✕ Hide Code' : '< Code'}
                         </button>
                     )}
                 </div>
@@ -151,38 +136,38 @@ const CADPreview = ({ scadCode, fileName }) => {
                     </div>
                 ) : (
                     <>
-                        {activeTab === 'code' ? (
-                            <div className="code-container">
-                                <pre>
-                                    <code className="language-javascript">
-                                        {scadCode}
-                                    </code>
-                                </pre>
-                            </div>
-                        ) : (
-                            <div className="model-container">
-                                {isLoading ? (
-                                    <div className="loading-overlay">
-                                        <div className="spinner"></div>
-                                        <p>Generating 3D Model...</p>
-                                    </div>
-                                ) : error ? (
-                                    <div className="error-overlay">
-                                        <div className="error-icon">⚠️</div>
-                                        <p>{error}</p>
-                                        <button className="retry-btn" onClick={() => setActiveTab('code')}>
-                                            View Source Code
-                                        </button>
-                                    </div>
-                                ) : stlUrl ? (
-                                    <Canvas shadows camera={{ position: [50, 50, 50], fov: 45 }}>
-                                        <color attach="background" args={['#151b35']} />
-                                        <Stage environment="city" intensity={0.6} adjustCamera={1.2}>
-                                            <ModelViewer stlUrl={stlUrl} />
-                                        </Stage>
-                                        <OrbitControls makeDefault autoRotate autoRotateSpeed={2} />
-                                    </Canvas>
-                                ) : null}
+                        <div className={`model-container ${showCode ? 'with-code' : ''}`}>
+                            {isLoading ? (
+                                <div className="loading-overlay">
+                                    <div className="spinner"></div>
+                                    <p>Generating 3D Model...</p>
+                                </div>
+                            ) : error ? (
+                                <div className="error-overlay">
+                                    <div className="error-icon">⚠️</div>
+                                    <p>{error}</p>
+                                </div>
+                            ) : stlUrl ? (
+                                <Canvas shadows camera={{ position: [50, 50, 50], fov: 45 }}>
+                                    <color attach="background" args={['#151b35']} />
+                                    <Stage environment="city" intensity={0.6} adjustCamera={1.2}>
+                                        <ModelViewer stlUrl={stlUrl} />
+                                    </Stage>
+                                    <OrbitControls makeDefault autoRotate autoRotateSpeed={2} />
+                                </Canvas>
+                            ) : null}
+                        </div>
+                        
+                        {showCode && (
+                            <div className="code-section">
+                                <div className="code-header">Generated OpenSCAD Code</div>
+                                <div className="code-container">
+                                    <pre>
+                                        <code className="language-scad">
+                                            {scadCode}
+                                        </code>
+                                    </pre>
+                                </div>
                             </div>
                         )}
                     </>

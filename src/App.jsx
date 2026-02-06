@@ -10,6 +10,9 @@ function App() {
   return (
     <div className="app-container">
       <div className="split-view">
+        <div className="cad-panel">
+          <CADPreview scadCode={scadCode} fileName={fileName} />
+        </div>
         <div className="chat-panel">
           <ChatInterface 
             onScadGenerated={(code, name) => {
@@ -17,9 +20,6 @@ function App() {
               setFileName(name);
             }} 
           />
-        </div>
-        <div className="cad-panel">
-          <CADPreview scadCode={scadCode} fileName={fileName} />
         </div>
       </div>
     </div>

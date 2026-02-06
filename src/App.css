@@ -48,7 +48,7 @@ body {
   border-right: 1px solid var(--border-color);
 }
 
-.cad-panel {
+.chat-panel {
   border-right: none;
   border-left: 1px solid var(--border-color);
 }
