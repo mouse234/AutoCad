@@ -180,6 +180,8 @@ GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
+This server runs OpenSCAD in-process using the WASM runtime bundled with `openscad-playground`, so no system-installed OpenSCAD binary is required. The `/api/render` endpoint compiles provided OpenSCAD code using the WASM runtime and returns a base64-encoded STL.
+
 ### AI Model Configuration
 
 The application uses **Gemini 3 Pro Preview** by default. To change the model, edit `server/index.js`:

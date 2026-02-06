@@ -4,12 +4,8 @@ import 'dotenv/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import fs from 'fs';
 import path from 'path';
-import { exec } from 'child_process';
+import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'url';
-import os from 'os';
-
-
-
 const app = express();
 const PORT = 3001;
 
@@ -107,119 +103,85 @@ Download as: **mounting_bracket.scad**"
 
 Remember: Test your mental model - if using rotate_extrude(), verify ALL polygon X coords are > 0!`;
 
-// Cross-platform OpenSCAD path detection
-function getOpenSCADPath() {
-    const platform = os.platform();
+// NOTE: This server uses the WASM OpenSCAD runtime (openscad-playground) via a worker
+// so no system-installed OpenSCAD binary is required.
 
-    if (platform === 'win32') {
-        // Windows paths - check common installation locations
-        const windowsPaths = [
-            'C:\\Program Files\\OpenSCAD\\openscad.exe',
-            'C:\\Program Files (x86)\\OpenSCAD\\openscad.exe',
-            path.join(process.env.LOCALAPPDATA || '', 'Programs\\OpenSCAD\\openscad.exe')
-        ];
-
-        for (const p of windowsPaths) {
-            if (fs.existsSync(p)) {
-                console.log(`Found OpenSCAD at: ${p}`);
-                return p;
-            }
-        }
-
-        // Try PATH as fallback
-        console.log('OpenSCAD not found in standard Windows locations, trying PATH...');
-        return 'openscad';
-
-    } else if (platform === 'darwin') {
-        // macOS path
-        const macPath = '/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD';
-        if (fs.existsSync(macPath)) {
-            console.log(`Found OpenSCAD at: ${macPath}`);
-            return macPath;
-        }
-        return 'openscad'; // Try PATH
-
-    } else {
-        // Linux - typically in PATH
-        console.log('Linux detected, using openscad from PATH');
-        return 'openscad';
-    }
-}
-
-// Render endpoint
+// Render endpoint — local OpenSCAD only (standalone SCAD server)
 app.post('/api/render', async (req, res) => {
     try {
         const { scadCode } = req.body;
+        if (!scadCode) return res.status(400).json({ error: 'SCAD code is required' });
 
-        if (!scadCode) {
-            return res.status(400).json({ error: 'SCAD code is required' });
-        }
-
-        const timestamp = Date.now();
-        const scadPath = path.join(TEMP_DIR, `model_${timestamp}.scad`);
-        const stlPath = path.join(TEMP_DIR, `model_${timestamp}.stl`);
-
-        // Write SCAD file
-        fs.writeFileSync(scadPath, scadCode);
-
-        // Get OpenSCAD executable path based on platform
-        const openscadCmd = getOpenSCADPath();
-
-        exec(`"${openscadCmd}" -o "${stlPath}" "${scadPath}"`, (error, stdout, stderr) => {
-            if (error) {
-                console.error('OpenSCAD Error:', error);
-
-                // Fallback: try just 'openscad' if the path failed, maybe it's in PATH
-                if (error.code === 127 || error.message.includes('not found')) {
-                    exec(`openscad -o "${stlPath}" "${scadPath}"`, (err2, out2, stderr2) => {
-                        if (err2) {
-                            console.error('OpenSCAD Fallback Error:', err2);
-                            return res.status(500).json({
-                                error: 'OpenSCAD executable not found',
-                                details: `Please install OpenSCAD from https://openscad.org/downloads.html\nTried paths: ${openscadCmd}, openscad (PATH)`
-                            });
-                        }
-                        // Success block for fallback
-                        sendResponse(stlPath, scadPath, scadCode, res);
-                    });
-                    return;
-                }
-
-                return res.status(500).json({
-                    error: 'Failed to generate model',
-                    details: stderr || error.message
-                });
-            }
-            sendResponse(stlPath, scadPath, scadCode, res);
-        });
-
+        const stlBase64 = await renderLocally(scadCode);
+        res.json({ stlData: stlBase64, scadCode });
     } catch (error) {
         console.error('Render API Error:', error);
         res.status(500).json({ error: 'Internal server error during rendering' });
     }
 });
 
-function sendResponse(stlPath, scadPath, scadCode, res) {
-    try {
-        const stlContent = fs.readFileSync(stlPath);
+// (Standalone) local helper will handle file read/cleanup; no cloud endpoint in standalone mode.
 
-        // Clean up
+// Helper: render SCAD code locally and return base64 STL
+function renderLocally(scadCode) {
+    return new Promise((resolve, reject) => {
         try {
-            if (fs.existsSync(scadPath)) fs.unlinkSync(scadPath);
-            if (fs.existsSync(stlPath)) fs.unlinkSync(stlPath);
-        } catch (e) {
-            console.error("Cleanup error", e);
-        }
+            // Use the openscad-playground worker (WASM) bundled in node_modules
+            const workerPath = path.join(__dirname, '..', 'node_modules', 'openscad-playground', 'dist', 'openscad-worker.cjs');
+            if (!fs.existsSync(workerPath)) return reject(new Error(`openscad-playground worker not found at ${workerPath}`));
 
-        res.json({
-            stlData: stlContent.toString('base64'),
-            scadCode
-        });
-    } catch (readError) {
-        console.error('Read Error:', readError);
-        res.status(500).json({ error: 'Failed to read generated model' });
-    }
+            const w = new Worker(workerPath, { argv: [], execArgv: [] });
+
+            const timeout = setTimeout(() => {
+                w.terminate();
+                reject(new Error('OpenSCAD WASM worker timed out'));
+            }, parseInt(process.env.OPENSCAD_WASM_TIMEOUT || '120000', 10));
+
+            w.on('message', (msg) => {
+                if (msg && msg.result) {
+                    clearTimeout(timeout);
+                    const result = msg.result;
+                    // result.outputs is array of [path, Uint8Array]
+                    if (result.outputs && result.outputs.length > 0) {
+                        const out = result.outputs[0][1];
+                        const buf = Buffer.from(out);
+                        w.terminate();
+                        resolve(buf.toString('base64'));
+                        return;
+                    }
+                    w.terminate();
+                    reject(new Error('No output produced by OpenSCAD WASM worker'));
+                } else if (msg && msg.error) {
+                    clearTimeout(timeout);
+                    w.terminate();
+                    reject(new Error(msg.error));
+                }
+            });
+
+            w.on('error', (err) => {
+                reject(err);
+            });
+
+            w.on('exit', (code) => {
+                if (code !== 0) {
+                    // if worker exits without message, reject
+                    reject(new Error(`OpenSCAD worker exited with code ${code}`));
+                }
+            });
+
+            // Post the message to the worker: inputs + args + outputPaths
+            w.postMessage({
+                inputs: [ { path: 'input.scad', content: scadCode } ],
+                args: [ '-o', 'output.stl', 'input.scad' ],
+                outputPaths: [ 'output.stl' ]
+            });
+        } catch (e) {
+            reject(e);
+        }
+    });
 }
+
+// No remote cloud renderer in standalone mode.
 
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
