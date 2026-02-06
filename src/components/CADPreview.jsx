@@ -9,10 +9,17 @@ import * as THREE from 'three';
 
 import './CADPreview.css';
 
-const ModelViewer = ({ stlUrl, scale = 1, onMetrics, cameraRef }) => {
+const ModelViewer = ({ stlUrl, scale = 1, onMetrics, cameraRef, onCanvasReady }) => {
     const geometry = useLoader(STLLoader, stlUrl);
-    const { camera } = useThree();
+    const { camera, gl } = useThree();
     const controlsRef = useRef(null);
+
+    // Expose canvas through callback
+    useEffect(() => {
+        if (gl && gl.domElement && onCanvasReady) {
+            onCanvasReady(gl.domElement);
+        }
+    }, [gl, onCanvasReady]);
 
     // Auto-center, compute normals and bounding box for metrics
     useMemo(() => {
@@ -95,6 +102,7 @@ const CADPreview = ({ scadCode, fileName }) => {
     const [opParams, setOpParams] = useState({});
     const [showToolbar, setShowToolbar] = useState(true); // Show CAD toolbar by default
     const [activeTool, setActiveTool] = useState(null);
+    const canvasRef = useRef(null); // Store canvas reference for PNG export
 
     const handleViewportControl = (action) => {
         if (!cameraRef.current) return;
@@ -268,17 +276,38 @@ const CADPreview = ({ scadCode, fileName }) => {
     };
 
     const handleExportPNG = () => {
-        // Find the first canvas within the model container
-        const canvas = document.querySelector('.model-container canvas');
-        if (!canvas) return;
+        if (!canvasRef.current) {
+            console.warn('Canvas not available for PNG export');
+            return;
+        }
+        
         try {
+            // Get canvas data URL with proper context
+            const canvas = canvasRef.current;
+            
+            // Check if canvas has actual content
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, 1, 1);
+            const hasContent = imageData.data[3] > 0; // Check alpha channel
+            
+            if (!hasContent) {
+                console.warn('Canvas appears blank, attempting to capture anyway');
+            }
+            
             const dataUrl = canvas.toDataURL('image/png');
+            
+            if (dataUrl === 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==') {
+                console.error('Canvas generated blank image');
+                return;
+            }
+            
             const a = document.createElement('a');
             a.href = dataUrl;
             a.download = fileName.replace('.scad', '.png');
             a.click();
         } catch (e) {
-            console.error('Export PNG failed', e);
+            console.error('Export PNG failed:', e);
+            alert('Failed to export PNG. Please try again.');
         }
     };
 
@@ -379,7 +408,7 @@ const CADPreview = ({ scadCode, fileName }) => {
                                     <color attach="background" args={['#151b35']} />
                                     <Stage environment="city" intensity={0.6} adjustCamera={1.2}>
                                         <group scale={[scale, scale, scale]}>
-                                            <ModelViewer stlUrl={stlUrl} scale={scale} onMetrics={setDimensions} cameraRef={cameraRef} />
+                                            <ModelViewer stlUrl={stlUrl} scale={scale} onMetrics={setDimensions} cameraRef={cameraRef} onCanvasReady={(canvas) => canvasRef.current = canvas} />
                                         </group>
                                     </Stage>
                                 </Canvas>

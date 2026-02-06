@@ -25,8 +25,11 @@ The following sections explain installation, running and troubleshooting for dev
 1. **Node.js** (v16 or higher)
    - Download from [nodejs.org](https://nodejs.org/)
 
-2. **OpenSCAD** (for 3D rendering)
-   - The backend uses a WASM OpenSCAD runtime (openscad-playground) for in-app rendering, so a system OpenSCAD binary is not required. If you prefer a native install for offline workflows or debugging, download it from [openscad.org/downloads](https://openscad.org/downloads.html).
+2. **OpenSCAD Runtime**
+   - The backend uses **WebAssembly (WASM) OpenSCAD runtime** via `openscad-playground` library for in-app rendering
+   - No system OpenSCAD binary installation is required
+   - The WASM runtime is automatically polyfilled to work in Node.js Worker threads
+   - Optional: For local development or debugging, download from [openscad.org/downloads](https://openscad.org/downloads.html)
 
 3. **AI API Key**
    - Get your free API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
@@ -94,7 +97,29 @@ Open your browser and navigate to:
 ```
 http://localhost:5173
 ```
+## 🏗️ Architecture
 
+### WASM Rendering Pipeline
+
+The application uses `openscad-playground` (a WASM port of OpenSCAD) for in-process 3D model rendering:
+
+1. **Frontend** sends SCAD code to backend via `/api/render` endpoint
+2. **Backend** spawns a Node.js Worker thread with WASM polyfills
+3. **Worker Wrapper** (`server/openscad-worker-wrapper.cjs`) provides:
+   - Web Worker API polyfill (`self.addEventListener`, `self.postMessage`)
+   - Fetch API mock for loading WASM binary files
+   - URL API mock for resource resolution
+   - WebAssembly.instantiateStreaming mock for WASM compilation
+4. **OpenSCAD WASM** renders SCAD code to STL binary output
+5. **Backend** returns base64-encoded STL data to frontend
+6. **Frontend** visualizes STL using Three.js STLLoader
+
+### Key Dependencies
+
+- **openscad-playground**: WASM-based OpenSCAD compiler/renderer
+- **@react-three/fiber & drei**: 3D visualization
+- **@google/generative-ai**: AI-powered code generation via Gemini
+- **Express.js**: Backend REST API server
 ## � Usage Guide
 
 ### Generating CAD Models
