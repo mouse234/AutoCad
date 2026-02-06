@@ -1,0 +1,96 @@
+.auth-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 15, 20, 0.65);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.auth-modal {
+  width: 440px;
+  max-width: calc(100% - 32px);
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 32px;
+  border-radius: 12px;
+  color: var(--text-primary);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.auth-modal .brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.auth-modal .logo {
+  font-size: 32px;
+}
+
+.auth-modal .title {
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.auth-modal .subtitle {
+  color: var(--text-secondary);
+  margin: 16px 0 24px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.auth-actions .primary {
+  width: 100%;
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.12s ease;
+}
+
+.auth-actions .primary:hover {
+  background: #5a9eff;
+  box-shadow: 0 8px 20px rgba(74,144,255,0.3);
+}
+
+.auth-actions .secondary {
+  width: 100%;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.12s ease;
+}
+
+.auth-actions .secondary:hover {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.12);
+}
+
+.auth-modal .footnote {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.8;
+}

@@ -1,13 +1,18 @@
-# 🤖 AI CAD Chatbot
+# CAD Design Studio — Powered by Advanced AI
 
-A powerful React-based AI chatbot that generates OpenSCAD CAD files using Google's Gemini 3 Pro Preview API. Features a beautiful split-view interface with real-time 3D visualization.
+A professional React-based CAD generation studio that produces OpenSCAD files using advanced AI technology. The application provides a polished split-view interface with real-time 3D visualization, export capabilities, and parametric model generation.
 
-![CAD Chatbot](https://img.shields.io/badge/React-19.2-blue) ![Gemini-3](https://img.shields.io/badge/Gemini-3_Pro-orange) ![OpenSCAD](https://img.shields.io/badge/OpenSCAD-Ready-green)
+![React](https://img.shields.io/badge/React-19.2-blue) ![AI_Powered](https://img.shields.io/badge/Powered_by-Advanced_AI-blueviolet) ![OpenSCAD](https://img.shields.io/badge/OpenSCAD-Ready-green)
 
 ## ✨ Features
 
-- 💬 **Natural Language CAD Design** - Describe parts in plain English
-- 🤖 **Gemini 3 Pro Preview** - Latest AI model with advanced reasoning
+## Key Features
+
+- Natural language CAD generation: describe parts to produce parametric OpenSCAD models.
+- Real-time 3D preview with export options (STL, SCAD, PNG).
+- Advanced AI-powered code generation for robust and maintainable OpenSCAD output.
+
+The following sections explain installation, running and troubleshooting for developers.
 - 📐 **Live 3D Visualization** - Interactive Three.js renderer
 - 💾 **STL Export** - Ready for 3D printing
 - 🎨 **Beautiful UI** - Modern split-view interface
@@ -21,10 +26,9 @@ A powerful React-based AI chatbot that generates OpenSCAD CAD files using Google
    - Download from [nodejs.org](https://nodejs.org/)
 
 2. **OpenSCAD** (for 3D rendering)
-   - **Windows**: Download from [openscad.org/downloads](https://openscad.org/downloads.html)
-   - Install to default location: `C:\Program Files\OpenSCAD\` or `C:\Program Files (x86)\OpenSCAD\`
+   - The backend uses a WASM OpenSCAD runtime (openscad-playground) for in-app rendering, so a system OpenSCAD binary is not required. If you prefer a native install for offline workflows or debugging, download it from [openscad.org/downloads](https://openscad.org/downloads.html).
 
-3. **Google Gemini API Key**
+3. **AI API Key**
    - Get your free API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
 
 ### Installation
@@ -143,10 +147,7 @@ http://localhost:5173
   3. The latest version includes fixes for this issue
 
 **Problem**: `Command failed` or `Error: OpenSCAD not installed`
-- **Solution**: Verify OpenSCAD installation path:
-  ```powershell
-  Test-Path "C:\Program Files\OpenSCAD\openscad.exe"
-  ```
+- **Solution**: If you are relying on a system-installed OpenSCAD binary, ensure it is installed and available on your `PATH`. The in-app renderer uses a WASM runtime by default, so this error usually only applies when the native binary is explicitly required.
 
 ## 📁 Project Structure
 
@@ -159,7 +160,7 @@ cad-chatbot/
 │   ├── App.jsx
 │   └── main.jsx
 ├── server/                 # Backend Node.js server
-│   ├── index.js           # Express server + Gemini AI
+│   ├── index.js           # Express server + AI Integration
 │   ├── temp/              # Temporary SCAD/STL files
 │   └── .env               # API key configuration
 ├── public/                 # Static assets
@@ -184,17 +185,16 @@ This server runs OpenSCAD in-process using the WASM runtime bundled with `opensc
 
 ### AI Model Configuration
 
-The application uses **Gemini 3 Pro Preview** by default. To change the model, edit `server/index.js`:
+The application uses **Advanced AI (3 Flash Model)** by default for fast, efficient CAD generation. To change the model, edit `server/index.js`:
 
 ```javascript
 const model = genAI.getGenerativeModel({ 
-    model: 'gemini-3-pro-preview' // Change this
+    model: 'gemini-3-flash-preview' // Change this
 });
 ```
 
 Available models:
-- `gemini-3-pro-preview` - Latest, most capable (current)
-- `gemini-3-flash-preview` - Faster, still very capable
+- `gemini-3-flash-preview` - Fast and efficient (current)
 - `gemini-1.5-pro` - Stable production model
 - `gemini-1.5-flash` - Fast and efficient
 
@@ -222,7 +222,7 @@ Available models:
 
 1. **First render is slow** - OpenSCAD compilation can take 30-60 seconds for complex models
 2. **Large models** - Very complex geometries may timeout or run out of memory
-3. **Preview models** - Gemini 3 Pro Preview requires API access (may have usage limits)
+3. **Preview models** - Flash models require API access (may have usage limits)
 
 ## 📝 Development
 
@@ -254,7 +254,7 @@ This project is open source and available under the MIT License.
 
 ## 🙏 Acknowledgments
 
-- **Google Gemini AI** - For the powerful language model
+- **Advanced AI** - For the powerful language model
 - **OpenSCAD** - For the amazing CAD kernel
 - **Three.js** - For 3D rendering capabilities
 - **React** - For the UI framework
@@ -270,4 +270,4 @@ If you encounter any issues:
 
 ---
 
-**Built with ❤️ using React, Node.js, and Gemini AI**
+**Built with ❤️ using React, Node.js, and Advanced AI**

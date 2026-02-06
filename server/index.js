@@ -13,95 +13,103 @@ const PORT = 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const TEMP_DIR = path.join(__dirname, 'temp');
+const SESSIONS_DIR = path.join(__dirname, 'sessions');
 
-// Ensure temp directory exists
+// Ensure directories exist
 if (!fs.existsSync(TEMP_DIR)) {
     fs.mkdirSync(TEMP_DIR);
 }
+if (!fs.existsSync(SESSIONS_DIR)) {
+    fs.mkdirSync(SESSIONS_DIR);
+}
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+    credentials: true,
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// System prompt for CAD generation
-const SYSTEM_PROMPT = `You are an expert AI CAD Assistant specialized in generating OpenSCAD code for mechanical parts.
+// Session management helpers
+function generateSessionId() {
+    return 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
 
-Your responsibilities:
-1. Interpret user intent and translate it into precise CAD geometry
-2. Ask clear, minimal clarification questions if dimensions or features are missing
-3. Generate parametric, manufacturable OpenSCAD models
+function getSessionPath(sessionId) {
+    return path.join(SESSIONS_DIR, `${sessionId}.json`);
+}
+
+function createSession() {
+    const sessionId = generateSessionId();
+    const session = {
+        id: sessionId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: []
+    };
+    fs.writeFileSync(getSessionPath(sessionId), JSON.stringify(session, null, 2));
+    return session;
+}
+
+function getSession(sessionId) {
+    const sessionPath = getSessionPath(sessionId);
+    if (!fs.existsSync(sessionPath)) return null;
+    return JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+}
+
+function saveSession(session) {
+    session.updatedAt = new Date().toISOString();
+    fs.writeFileSync(getSessionPath(session.id), JSON.stringify(session, null, 2));
+}
+
+function listSessions() {
+    if (!fs.existsSync(SESSIONS_DIR)) return [];
+    const files = fs.readdirSync(SESSIONS_DIR);
+    return files
+        .filter(f => f.endsWith('.json'))
+        .map(f => {
+            const data = JSON.parse(fs.readFileSync(path.join(SESSIONS_DIR, f), 'utf8'));
+            return { id: data.id, createdAt: data.createdAt, updatedAt: data.updatedAt, messageCount: data.messages.length };
+        })
+        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+}
+
+// System prompt for CAD generation — professional phrasing, Gemini-powered
+const SYSTEM_PROMPT = `You are Gemini, a CAD code generation engine specialized in producing clean, parametric OpenSCAD models for mechanical parts.
+
+Responsibilities:
+1. Translate user requirements into precise parametric OpenSCAD code
+2. Ask concise clarification questions only when necessary to complete the design
+3. Produce manufacturable, watertight geometry with sensible defaults
 4. Default units: millimeters
 
-CRITICAL OpenSCAD Rules (MUST FOLLOW):
-1. **rotate_extrude() rules:**
-   - ALL points must have X > 0 (strictly positive X coordinates)
-   - NEVER include points at X=0 or negative X in polygons used with rotate_extrude()
-   - **CRITICAL**: When using offset(r=R) before rotate_extrude(), ALL points must have X > R
-     * Example: If using offset(r=1.5), then minimum X must be >= 1.6 (not 0.1!)
-     * The offset expands inward too, so [0.1, y] becomes [-1.4, y] which fails!
-   - **Safe approach**: For centerline in rotate_extrude + offset, use X = offset_radius + 0.5
-     * Example: offset(r=1.5) → use [2.0, 0] for centerline, NOT [0.1, 0]
+Strict OpenSCAD rules (must follow):
+- When using rotate_extrude(), ensure polygon X coordinates are strictly positive to avoid invalid geometry.
+- Avoid self-intersections and keep small overlaps (0.01–0.1 mm) for reliable boolean operations.
 
-2. **Manifold geometry:**
-   - Ensure all solids are closed and watertight
-   - Avoid self-intersections
-   - Use small overlap (0.01-0.1mm) in boolean operations to prevent gaps
-
-3. **Best practices:**
-   - Use $fn=50-100 for smooth curves (higher for final prints)
-   - Add realistic tolerances (0.1-0.2mm for press fits, 0.3-0.5mm for clearance)
-   - Prefer cylinder() over circle() + linear_extrude() for simple shapes
-   - Use hull() for smooth fillets, minkowski() for rounded corners
-   - Avoid tiny features (<0.5mm) that won't print well
-
-4. **Thread generation:**
-   - Keep thread depth reasonable (50-65% of pitch)
-   - Use adequate segments per turn (72+ for smooth threads)
-   - Add lead-in chamfers for easier assembly
-
-5. **Code structure:**
-   - Use modules for reusable components
-   - Add clear parameter definitions at the top
-   - Include manufacturing notes in comments
-   - Set reasonable default values
+Best practices:
+- Use appropriate $fn for smooth curves, and reasonable tolerances for fits.
+- Structure code with modules and parameter blocks for easy edits.
 
 Output format:
-- ALWAYS wrap OpenSCAD code in: \`\`\`scad\\n...\\n\`\`\`
-- Include brief explanation before code
-- Add helpful inline comments
-- Suggest descriptive filename
+- Wrap OpenSCAD code with triple-backticks and the scad language tag (three backticks followed by the word "scad").
+- Provide a brief one-line description and suggest a filename.
 
-Example response:
-"I'll create a mounting bracket with M4 holes!
+Example (conceptual):
+Mounting bracket — 50 x 40 mm with M4 clearance holes
 
-\`\`\`scad
-// Mounting bracket - 50x40mm with M4 mounting holes
+// Mounting bracket
 $fn = 80;
+...
 
-// Parameters
-length = 50;
-width = 40;
-thickness = 3;
-hole_dia = 4.3; // M4 clearance
-
-// Main bracket
-difference() {
-    // Body (use small offset from center for rotate_extrude compatibility)
-    cube([length, width, thickness], center=true);
-    
-    // Mounting holes
-    for(x = [-15, 15], y = [-10, 10])
-        translate([x, y, 0])
-            cylinder(h=thickness+1, d=hole_dia, center=true);
-}
-\`\`\`
-
-Download as: **mounting_bracket.scad**"
-
-Remember: Test your mental model - if using rotate_extrude(), verify ALL polygon X coords are > 0!`;
+Download as: mounting_bracket.scad
+`;
 
 // NOTE: This server uses the WASM OpenSCAD runtime (openscad-playground) via a worker
 // so no system-installed OpenSCAD binary is required.
@@ -183,10 +191,10 @@ function renderLocally(scadCode) {
 
 // No remote cloud renderer in standalone mode.
 
-// Chat endpoint
+// Chat endpoint with session support
 app.post('/api/chat', async (req, res) => {
     try {
-        const { message, history } = req.body;
+        const { message, sessionId } = req.body;
 
         if (!process.env.GEMINI_API_KEY) {
             return res.status(500).json({
@@ -194,18 +202,22 @@ app.post('/api/chat', async (req, res) => {
             });
         }
 
+        // Get or create session
+        let session = sessionId ? getSession(sessionId) : null;
+        if (!session) {
+            session = createSession();
+        }
+
         // Initialize model
-        const model = genAI.getGenerativeModel({ model: 'gemini-3-pro-preview' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 
-        // Build chat history for context
-        const chatHistory = history
-            .filter(msg => msg.role !== 'assistant' || !msg.content.includes('Hi! I\'m your AI CAD Assistant'))
-            .map(msg => ({
-                role: msg.role === 'user' ? 'user' : 'model',
-                parts: [{ text: msg.content }]
-            }));
+        // Build full chat history from session messages as context
+        const chatHistory = session.messages.map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'model',
+            parts: [{ text: msg.content }]
+        }));
 
-        // Start chat with history
+        // Start chat with full session history
         const chat = model.startChat({
             history: [
                 {
@@ -232,20 +244,70 @@ app.post('/api/chat', async (req, res) => {
         const filenameMatch = responseText.match(/download.*?[:\*\*]*\s*([a-zA-Z0-9_-]+\.scad)/i);
         const fileName = filenameMatch ? filenameMatch[1] : 'design.scad';
 
+        // Save messages to session
+        session.messages.push({ role: 'user', content: message });
+        session.messages.push({ role: 'assistant', content: responseText, scadCode, fileName });
+        saveSession(session);
+
         res.json({
+            sessionId: session.id,
             message: responseText,
             scadCode,
             fileName
         });
 
     } catch (error) {
-        console.error('Error Details:', error);
-        console.error('Response Error:', error.response);
+        console.error('Chat API Error:', error.message);
+        console.error('Full error:', error);
         res.status(500).json({
             error: 'Failed to process request',
-            details: error.message,
-            stack: error.stack
+            details: error.message
         });
+    }
+});
+
+// Session management endpoints
+app.post('/api/session/create', (req, res) => {
+    try {
+        const session = createSession();
+        res.json({ sessionId: session.id, createdAt: session.createdAt });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to create session' });
+    }
+});
+
+app.get('/api/session/:id', (req, res) => {
+    try {
+        const session = getSession(req.params.id);
+        if (!session) {
+            return res.status(404).json({ error: 'Session not found' });
+        }
+        res.json(session);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to retrieve session' });
+    }
+});
+
+app.get('/api/sessions', (req, res) => {
+    try {
+        const sessions = listSessions();
+        res.json({ sessions });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to list sessions' });
+    }
+});
+
+app.delete('/api/session/:id', (req, res) => {
+    try {
+        const sessionPath = getSessionPath(req.params.id);
+        if (fs.existsSync(sessionPath)) {
+            fs.unlinkSync(sessionPath);
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ error: 'Session not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete session' });
     }
 });
 
@@ -254,7 +316,29 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', geminiConfigured: !!process.env.GEMINI_API_KEY });
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 CAD Chatbot Server running on http://localhost:${PORT}`);
-    console.log(`📡 Gemini API configured: ${process.env.GEMINI_API_KEY ? '✅' : '❌'}`);
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({ error: 'Endpoint not found', path: req.path });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({ error: 'Internal server error', message: err.message });
+});
+
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n🚀 CAD Chatbot Server running on http://localhost:${PORT}`);
+    console.log(`📡 Gemini API Key: ${process.env.GEMINI_API_KEY ? '✅ Configured' : '❌ Not configured'}`);
+    console.log(`🤖 Model: gemini-3-flash-preview`);
+    console.log(`📁 Sessions dir: ${SESSIONS_DIR}`);
+    console.log(`✅ Ready to accept connections\n`);
+});
+
+server.on('error', (err) => {
+    console.error('Server error:', err);
+    if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use`);
+    }
+    process.exit(1);
 });

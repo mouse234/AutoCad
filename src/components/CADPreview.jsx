@@ -1,29 +1,84 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism-tomorrow.css';
 import axios from 'axios';
-import { Canvas, useLoader } from '@react-three/fiber';
+import { Canvas, useLoader, useThree } from '@react-three/fiber';
 import { OrbitControls, Stage, Center } from '@react-three/drei';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
+import * as THREE from 'three';
+
 import './CADPreview.css';
 
-const ModelViewer = ({ stlUrl }) => {
+const ModelViewer = ({ stlUrl, scale = 1, onMetrics, cameraRef }) => {
     const geometry = useLoader(STLLoader, stlUrl);
+    const { camera } = useThree();
+    const controlsRef = useRef(null);
 
-    // Auto-center and compute normals for better lighting
+    // Auto-center, compute normals and bounding box for metrics
     useMemo(() => {
         if (geometry) {
             geometry.computeVertexNormals();
             geometry.center();
+            geometry.computeBoundingBox();
+
+            if (geometry.boundingBox && typeof onMetrics === 'function') {
+                const size = new THREE.Vector3();
+                geometry.boundingBox.getSize(size);
+                onMetrics({ x: size.x * scale, y: size.y * scale, z: size.z * scale });
+            }
         }
-    }, [geometry]);
+    }, [geometry, onMetrics, scale]);
+
+    // Expose camera controls to parent
+    useEffect(() => {
+        if (controlsRef.current && cameraRef) {
+            cameraRef.current = {
+                controls: controlsRef.current,
+                camera,
+                fitAll: () => {
+                    if (controlsRef.current && geometry) {
+                        geometry.computeBoundingBox();
+                        const size = new THREE.Vector3();
+                        geometry.boundingBox.getSize(size);
+                        const maxDim = Math.max(size.x, size.y, size.z);
+                        const fov = camera.fov * (Math.PI / 180);
+                        let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                        cameraZ = Math.max(cameraZ, 10);
+                        camera.position.set(cameraZ, cameraZ, cameraZ);
+                        controlsRef.current.target.set(0, 0, 0);
+                        controlsRef.current.update();
+                    }
+                },
+                resetView: () => {
+                    camera.position.set(50, 50, 50);
+                    controlsRef.current.target.set(0, 0, 0);
+                    controlsRef.current.update();
+                },
+                zoomIn: () => {
+                    if (controlsRef.current) {
+                        controlsRef.current.dollyIn(1.2);
+                        controlsRef.current.update();
+                    }
+                },
+                zoomOut: () => {
+                    if (controlsRef.current) {
+                        controlsRef.current.dollyOut(1.2);
+                        controlsRef.current.update();
+                    }
+                }
+            };
+        }
+    }, [controlsRef, camera, geometry]);
 
     return (
-        <Center>
-            <mesh geometry={geometry} castShadow receiveShadow>
-                <meshStandardMaterial color="#4a90ff" roughness={0.5} metalness={0.1} />
-            </mesh>
-        </Center>
+        <>
+            <Center>
+                <mesh geometry={geometry} castShadow receiveShadow>
+                    <meshStandardMaterial color="#4a90ff" roughness={0.5} metalness={0.1} />
+                </mesh>
+            </Center>
+            <OrbitControls ref={controlsRef} makeDefault autoRotate autoRotateSpeed={2} />
+        </>
     );
 };
 
@@ -32,6 +87,114 @@ const CADPreview = ({ scadCode, fileName }) => {
     const [stlUrl, setStlUrl] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [scale, setScale] = useState(1.0);
+    const [dimensions, setDimensions] = useState(null);
+    const [units, setUnits] = useState('mm'); // 'mm' or 'in'
+    const cameraRef = useRef(null);
+    const [showOpDialog, setShowOpDialog] = useState(null); // 'extrude', 'pocket', 'fillet', 'chamfer', or null
+    const [opParams, setOpParams] = useState({});
+    const [showToolbar, setShowToolbar] = useState(true); // Show CAD toolbar by default
+    const [activeTool, setActiveTool] = useState(null);
+
+    const handleViewportControl = (action) => {
+        if (!cameraRef.current) return;
+        switch (action) {
+            case 'zoomIn':
+                cameraRef.current.zoomIn?.();
+                break;
+            case 'zoomOut':
+                cameraRef.current.zoomOut?.();
+                break;
+            case 'fitAll':
+                cameraRef.current.fitAll?.();
+                break;
+            case 'resetView':
+                cameraRef.current.resetView?.();
+                break;
+            default:
+                break;
+        }
+    };
+
+    const handleToolSelect = (toolId) => {
+        setActiveTool(toolId);
+        console.log(`Selected tool: ${toolId}`);
+        // Tool-specific actions can be implemented here
+        switch (toolId) {
+            case 'zoomIn':
+                handleViewportControl('zoomIn');
+                break;
+            case 'zoomOut':
+                handleViewportControl('zoomOut');
+                break;
+            case 'zoomExtents':
+                handleViewportControl('fitAll');
+                break;
+            case 'pan':
+                // Pan mode would be toggled here
+                break;
+            case 'select':
+                // Selection mode would be activated
+                break;
+            case 'move':
+                // Move mode
+                break;
+            case 'rotate':
+                // Rotate mode
+                break;
+            case 'scale':
+                // Scale mode
+                break;
+            case 'copy':
+                // Copy mode
+                break;
+            case 'mirror':
+                // Mirror mode
+                break;
+            case 'offset':
+                // Offset mode
+                break;
+            case 'erase':
+                // Delete mode
+                break;
+            case 'trim':
+                // Trim mode
+                break;
+            case 'extend':
+                // Extend mode
+                break;
+            case 'osnap':
+                // Object snap toggle
+                break;
+            case 'grips':
+                // Grips mode
+                break;
+            default:
+                break;
+        }
+    };
+
+    const handleToolAction = (actionId) => {
+        console.log(`Tool action: ${actionId}`);
+        // Handle specific tool actions
+    };
+
+    const handleModelOperation = (operation) => {
+        setShowOpDialog(operation);
+        setOpParams({
+            extrude: { height: 10, face: 'top' },
+            pocket: { depth: 5, face: 'top' },
+            fillet: { radius: 2, edges: 'all' },
+            chamfer: { distance: 1, edges: 'all' }
+        }[operation] || {});
+    };
+
+    const applyModelOperation = () => {
+        // Placeholder: In a real CAD app, this would modify geometry
+        // For now, we'll show a notification and close the dialog
+        console.log(`Applied ${showOpDialog} with params:`, opParams);
+        setShowOpDialog(null);
+    };
 
     useEffect(() => {
         if (showCode) {
@@ -104,35 +267,99 @@ const CADPreview = ({ scadCode, fileName }) => {
         a.click();
     };
 
+    const handleExportPNG = () => {
+        // Find the first canvas within the model container
+        const canvas = document.querySelector('.model-container canvas');
+        if (!canvas) return;
+        try {
+            const dataUrl = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = fileName.replace('.scad', '.png');
+            a.click();
+        } catch (e) {
+            console.error('Export PNG failed', e);
+        }
+    };
+
+    const handleCopyDimensions = async () => {
+        if (!dimensions) return;
+        const fmt = (v) => (units === 'mm' ? `${v.toFixed(2)} mm` : `${(v / 25.4).toFixed(3)} in`);
+        const text = `X: ${fmt(dimensions.x)}, Y: ${fmt(dimensions.y)}, Z: ${fmt(dimensions.z)}`;
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (e) {
+            console.error('Clipboard copy failed', e);
+        }
+    };
+
     return (
         <div className="cad-preview">
-            <div className="preview-header">
-                <h2>📐 3D Model</h2>
-                <div className="header-buttons">
+            {/* Viewport Controls Toolbar - Always Visible */}
+            <div className="viewport-toolbar">
+                <div className="toolbar-group">
+                    <button className="toolbar-icon-btn" disabled={!stlUrl} onClick={() => handleViewportControl('zoomIn')} title="Zoom in">🔍+</button>
+                    <button className="toolbar-icon-btn" disabled={!stlUrl} onClick={() => handleViewportControl('zoomOut')} title="Zoom out">🔍−</button>
+                    <button className="toolbar-icon-btn" disabled={!stlUrl} onClick={() => handleViewportControl('fitAll')} title="Fit all">⊡</button>
+                    <button className="toolbar-icon-btn" disabled={!stlUrl} onClick={() => handleViewportControl('resetView')} title="Reset view">🔄</button>
+                </div>
+                <div className="toolbar-divider-vertical"></div>
+                <div className="toolbar-group">
+                    <button className="toolbar-icon-btn" disabled={!stlUrl} onClick={() => handleModelOperation('extrude')} title="Extrude feature">⬆</button>
+                    <button className="toolbar-icon-btn" disabled={!stlUrl} onClick={() => handleModelOperation('pocket')} title="Pocket (subtract)">⬇</button>
+                    <button className="toolbar-icon-btn" disabled={!stlUrl} onClick={() => handleModelOperation('fillet')} title="Fillet edges">~</button>
+                    <button className="toolbar-icon-btn" disabled={!stlUrl} onClick={() => handleModelOperation('chamfer')} title="Chamfer edges">∧</button>
+                </div>
+            </div>
+
+            <div className="preview-toolbar">
+                <div className="toolbar-left">
+                    <h3 className="panel-title">3D Viewport</h3>
+                </div>
+                <div className="toolbar-center">
+                    {stlUrl && dimensions && (
+                        <button className="toolbar-btn" onClick={handleCopyDimensions} title="Copy dimensions to clipboard">
+                            📋 {dimensions.x.toFixed(1)}×{dimensions.y.toFixed(1)}×{dimensions.z.toFixed(1)}
+                        </button>
+                    )}
+                </div>
+                <div className="toolbar-right">
                     {stlUrl && (
-                        <button className="download-btn secondary" onClick={handleDownloadStl}>
-                            ⬇️ STL
-                        </button>
+                        <>
+                            <button className="icon-btn-small" onClick={handleDownloadStl} title="Download STL">
+                                STL
+                            </button>
+                            <button className="icon-btn-small" onClick={handleExportPNG} title="Export PNG">
+                                PNG
+                            </button>
+                        </>
                     )}
                     {scadCode && (
-                        <button className="download-btn" onClick={handleDownload}>
-                            ⬇️ SCAD
+                        <button className="icon-btn-small" onClick={handleDownload} title="Download SCAD source">
+                            CODE
                         </button>
                     )}
-                    {scadCode && (
-                        <button className={`toggle-code-btn ${showCode ? 'active' : ''}`} onClick={() => setShowCode(!showCode)}>
-                            {showCode ? '✕ Hide Code' : '< Code'}
-                        </button>
-                    )}
+                    <div className="toolbar-divider"></div>
+                    <div className="scale-control">
+                        <label>Scale:</label>
+                        <input type="range" min="0.1" max="5" step="0.1" value={scale} onChange={(e) => setScale(parseFloat(e.target.value))} />
+                        <span className="scale-value">{scale.toFixed(1)}x</span>
+                    </div>
+                    <div className="unit-control">
+                        <select value={units} onChange={(e) => setUnits(e.target.value)} aria-label="Units">
+                            <option value="mm">mm</option>
+                            <option value="in">in</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
             <div className="preview-content">
                 {!scadCode ? (
-                    <div className="placeholder">
+                        <div className="placeholder">
                         <div className="placeholder-icon">📦</div>
                         <h3>No CAD Model Yet</h3>
-                        <p>Ask the AI assistant to generate a CAD design, and it will appear here!</p>
+                        <p>Describe your design using natural language and our AI will generate a CAD model — it will appear here.</p>
                     </div>
                 ) : (
                     <>
@@ -151,12 +378,21 @@ const CADPreview = ({ scadCode, fileName }) => {
                                 <Canvas shadows camera={{ position: [50, 50, 50], fov: 45 }}>
                                     <color attach="background" args={['#151b35']} />
                                     <Stage environment="city" intensity={0.6} adjustCamera={1.2}>
-                                        <ModelViewer stlUrl={stlUrl} />
+                                        <group scale={[scale, scale, scale]}>
+                                            <ModelViewer stlUrl={stlUrl} scale={scale} onMetrics={setDimensions} cameraRef={cameraRef} />
+                                        </group>
                                     </Stage>
-                                    <OrbitControls makeDefault autoRotate autoRotateSpeed={2} />
                                 </Canvas>
                             ) : null}
                         </div>
+                        {dimensions && (
+                            <div className="dimensions-overlay">
+                                <div>Dimensions (approx):</div>
+                                <div className="dims">X: {dimensions.x.toFixed(1)} mm</div>
+                                <div className="dims">Y: {dimensions.y.toFixed(1)} mm</div>
+                                <div className="dims">Z: {dimensions.z.toFixed(1)} mm</div>
+                            </div>
+                        )}
                         
                         {showCode && (
                             <div className="code-section">
@@ -173,6 +409,66 @@ const CADPreview = ({ scadCode, fileName }) => {
                     </>
                 )}
             </div>
+
+            {/* Model Operation Dialog */}
+            {showOpDialog && (
+                <div className="operation-dialog-backdrop" onClick={() => setShowOpDialog(null)}>
+                    <div className="operation-dialog" onClick={(e) => e.stopPropagation()}>
+                        <h3>{showOpDialog.charAt(0).toUpperCase() + showOpDialog.slice(1)} Parameters</h3>
+                        <div className="dialog-body">
+                            {showOpDialog === 'extrude' && (
+                                <>
+                                    <label>Height (mm):</label>
+                                    <input type="number" value={opParams.height} onChange={(e) => setOpParams({...opParams, height: parseFloat(e.target.value)})} />
+                                    <label>Face:</label>
+                                    <select value={opParams.face} onChange={(e) => setOpParams({...opParams, face: e.target.value})}>
+                                        <option>top</option>
+                                        <option>bottom</option>
+                                        <option>all</option>
+                                    </select>
+                                </>
+                            )}
+                            {showOpDialog === 'pocket' && (
+                                <>
+                                    <label>Depth (mm):</label>
+                                    <input type="number" value={opParams.depth} onChange={(e) => setOpParams({...opParams, depth: parseFloat(e.target.value)})} />
+                                    <label>Target Face:</label>
+                                    <select value={opParams.face} onChange={(e) => setOpParams({...opParams, face: e.target.value})}>
+                                        <option>top</option>
+                                        <option>bottom</option>
+                                    </select>
+                                </>
+                            )}
+                            {showOpDialog === 'fillet' && (
+                                <>
+                                    <label>Radius (mm):</label>
+                                    <input type="number" value={opParams.radius} onChange={(e) => setOpParams({...opParams, radius: parseFloat(e.target.value)})} />
+                                    <label>Apply to:</label>
+                                    <select value={opParams.edges} onChange={(e) => setOpParams({...opParams, edges: e.target.value})}>
+                                        <option value="all">All edges</option>
+                                        <option value="selected">Selected edges</option>
+                                    </select>
+                                </>
+                            )}
+                            {showOpDialog === 'chamfer' && (
+                                <>
+                                    <label>Distance (mm):</label>
+                                    <input type="number" value={opParams.distance} onChange={(e) => setOpParams({...opParams, distance: parseFloat(e.target.value)})} />
+                                    <label>Apply to:</label>
+                                    <select value={opParams.edges} onChange={(e) => setOpParams({...opParams, edges: e.target.value})}>
+                                        <option value="all">All edges</option>
+                                        <option value="selected">Selected edges</option>
+                                    </select>
+                                </>
+                            )}
+                        </div>
+                        <div className="dialog-footer">
+                            <button className="dialog-btn cancel" onClick={() => setShowOpDialog(null)}>Cancel</button>
+                            <button className="dialog-btn apply" onClick={applyModelOperation}>Apply</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

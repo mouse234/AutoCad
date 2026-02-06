@@ -1,0 +1,145 @@
+/* Horizontal Toolbar for Header */
+.cad-toolbar {
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    padding: 0 8px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    backdrop-filter: none;
+    width: auto;
+    max-height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    box-shadow: none;
+    box-sizing: border-box;
+    align-items: center;
+}
+
+.tool-wrapper {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+}
+
+.tool-icon-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    background: rgba(74, 144, 255, 0.08);
+    border: 1px solid rgba(74, 144, 255, 0.15);
+    border-radius: 4px;
+    color: #eaeef2;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    padding: 0;
+    line-height: 1;
+    position: relative;
+    z-index: 10;
+}
+
+.tool-icon-btn:hover:not(:disabled) {
+    background: rgba(74, 144, 255, 0.15);
+    border-color: rgba(74, 144, 255, 0.35);
+    box-shadow: 0 1px 4px rgba(74, 144, 255, 0.1);
+    transform: scale(1.02);
+}
+
+.tool-icon-btn.active {
+    background: rgba(74, 144, 255, 0.25);
+    border-color: #4a90ff;
+    color: #4a90ff;
+    box-shadow: 0 0 8px rgba(74, 144, 255, 0.3), inset 0 0 4px rgba(74, 144, 255, 0.1);
+}
+
+.tool-icon-btn:disabled,
+.tool-icon-btn.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: rgba(100, 110, 130, 0.05);
+    border-color: rgba(100, 110, 130, 0.1);
+}
+
+.tool-icon-btn:disabled:hover,
+.tool-icon-btn.disabled:hover {
+    background: rgba(100, 110, 130, 0.05);
+    border-color: rgba(100, 110, 130, 0.1);
+    transform: none;
+    box-shadow: none;
+}
+
+/* Tooltip Popup on Hover - Appears Below Button */
+.tool-tooltip {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+    background: rgba(13, 15, 20, 0.98);
+    border: 1px solid rgba(74, 144, 255, 0.25);
+    border-radius: 4px;
+    padding: 6px 10px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    animation: tooltipSlideUp 0.12s ease-out;
+    margin-top: 4px;
+}
+
+.tooltip-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4a90ff;
+    margin-bottom: 1px;
+}
+
+.tooltip-desc {
+    font-size: 10px;
+    color: rgba(234, 238, 242, 0.5);
+}
+
+@keyframes tooltipSlideUp {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* Toolbar Divider - Vertical */
+.toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: rgba(74, 144, 255, 0.1);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+/* Scrollbar Styling */
+.cad-toolbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.cad-toolbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.cad-toolbar::-webkit-scrollbar-thumb {
+    background: rgba(74, 144, 255, 0.15);
+    border-radius: 2px;
+}
+
+.cad-toolbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(74, 144, 255, 0.3);
+}
